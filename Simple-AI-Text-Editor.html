@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字幕文稿智能优化工具 - 增强版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+        .editable-text {
+            min-height: 128px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .mode-button-optimize {
+            background: linear-gradient(to bottom, #68B030 0%, #68B030 66%, #5C8F29 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-button-optimize::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 33%;
+            background-image: radial-gradient(circle, #5C8F29 1px, transparent 1px);
+            background-size: 8px 8px;
+            opacity: 0.6;
+        }
+        .mode-button-notes {
+            background: linear-gradient(to bottom, #6667AB 0%, #6667AB 66%, #6F4C9B 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-button-notes::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 33%;
+            background-image: radial-gradient(circle, #6F4C9B 1px, transparent 1px);
+            background-size: 8px 8px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const FileText = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        );
+
+        const Upload = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+        );
+
+        const Sparkles = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+        );
+
+        const Save = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+        );
+
+        const Settings = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        const X = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        );
+
+        const AlertCircle = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const Edit = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+        );
+
+        const DEFAULT_CONFIG = {
+            provider: 'dify',
+            apiKey: '',
+            apiUrl: 'https://api.dify.ai/v1/chat-messages',
+            siliconApiKey: '',
+            siliconModel: 'Qwen/Qwen2.5-7B-Instruct',
+            customModels: [],
+            separator: '\n\n',
+            conservativePrompt: '你是一个专业的文本校对助手。请对字幕文稿进行保守优化:保留原意和大部分表达方式,仅修正明显的口语重复、语病和不必要的停顿词(如"嗯"、"啊"、"那个"、"就是"等)。保持原文风格,不要过度改写。直接返回优化后的文本,不要添加任何解释。',
+            aggressivePrompt: '你是一个专业的文本编辑助手。请对字幕文稿进行激进优化:重新组织语言,使表达更加书面化、简洁、流畅。去除所有口语化表达和冗余内容,提炼核心观点,使文本更适合书面阅读。直接返回优化后的文本,不要添加任何解释。',
+            noteAPrompt: '你是一个专业的笔记助手。请为这段文稿生成简洁的要点笔记,提炼关键信息和核心观点。使用简短的句子或短语,便于快速回顾。直接返回笔记内容,不要添加任何解释。',
+            noteBPrompt: '你是一个专业的分析助手。请为这段文稿生成深度分析笔记,包括关键洞察、延伸思考和相关建议。帮助读者更好地理解和应用这些内容。直接返回笔记内容,不要添加任何解释。',
+            aiSegmentPrompt: '你是一个专业的文本处理助手。请将以下文本智能地分割成更小、更自然的段落。确保每个段落都围绕一个核心主题，并且句子流畅、连贯。请直接返回分段后的文本，使用\n\n作为段落之间的分隔符。不要添加任何额外的标点符号或修改原文内容。',
+            contextConservativePrompt: '你是一个专业的文本校对助手。上一段内容是:{上文}\n\n请结合上文语境,对当前字幕文稿进行保守优化:保留原意和大部分表达方式,仅修正明显的口语重复、语病和不必要的停顿词。保持原文风格和上下文连贯性。直接返回优化后的文本,不要添加任何解释。',
+            contextAggressivePrompt: '你是一个专业的文本编辑助手。上一段内容是:{上文}\n\n请结合上文语境,对当前字幕文稿进行激进优化:重新组织语言,使表达更加书面化、简洁、流畅,同时保持与上文的逻辑连贯性。去除所有口语化表达和冗余内容,提炼核心观点。直接返回优化后的文本,不要添加任何解释。',
+            contextNoteAPrompt: '你是一个专业的笔记助手。上一段内容是:{上文}\n\n请结合上文内容,为这段文稿生成简洁的要点笔记,提炼关键信息和核心观点,注意与上文的关联性。使用简短的句子或短语,便于快速回顾。直接返回笔记内容,不要添加任何解释。',
+            contextNoteBPrompt: '你是一个专业的分析助手。上一段内容是:{上文}\n\n请结合上文内容,为这段文稿生成深度分析笔记,包括关键洞察、延伸思考和相关建议,特别关注与上文的逻辑关系和思想延续。帮助读者更好地理解和应用这些内容。直接返回笔记内容,不要添加任何解释。',
+            buttonNameA: '保守优化',
+            buttonNameB: '激进优化',
+            noteButtonNameA: '笔记A',
+            noteButtonNameB: '笔记B',
+            darkMode: false,
+            fontSize: 14,
+            labelPrefix: '## ',
+            notePrefix: '> ',
+            concurrentCount: 1
+        };
+
+        const SILICON_MODELS = [
+            { id: 'Qwen/Qwen2.5-7B-Instruct', name: 'Qwen2.5-7B-Instruct' },
+            { id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen2.5-72B-Instruct' },
+            { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek-V3' },
+            { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama-3.3-70B' },
+            { id: 'THUDM/glm-4-9b-chat', name: 'GLM-4-9B' },
+            { id: 'Pro/Qwen/Qwen2.5-7B-Instruct', name: 'Qwen2.5-7B-Pro' },
+        ];
+
+        function SubtitleOptimizer() {
+            const [mode, setMode] = useState('optimize');
+            const [config, setConfig] = useState(DEFAULT_CONFIG);
+            const [originalText, setOriginalText] = useState('');
+            const [paragraphs, setParagraphs] = useState([]);
+            const [processing, setProcessing] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [showQuickSettings, setShowQuickSettings] = useState(true);
+            const [editingButtonNames, setEditingButtonNames] = useState(false);
+            const [newModelId, setNewModelId] = useState('');
+            const [newModelName, setNewModelName] = useState('');
+            const [showProgressPanel, setShowProgressPanel] = useState(false);
+            const [showBatchModal, setShowBatchModal] = useState(false);
+            const [batchMode, setBatchMode] = useState(null);
+            const [isPaused, setIsPaused] = useState(false);
+            const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
+            const [editingLabel, setEditingLabel] = useState(null);
+            const [notifications, setNotifications] = useState([]);
+            const [segmentCharCount, setSegmentCharCount] = useState(1500);
+            const [intelligentCutting, setIntelligentCutting] = useState(false);
+
+            const paragraphRefs = useRef([]);
+            const shouldPauseRef = useRef(false);
+            const notificationIdCounter = useRef(0);
+
+            const addNotification = (message, type = 'error') => {
+                const id = notificationIdCounter.current++;
+                const notification = {
+                    id,
+                    message,
+                    type,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setNotifications(prev => [...prev, notification]);
+            };
+
+            const removeNotification = (id) => {
+                setNotifications(prev => prev.filter(n => n.id !== id));
+            };
+
+            useEffect(() => {
+                paragraphRefs.current = paragraphRefs.current.slice(0, paragraphs.length);
+            }, [paragraphs.length]);
+
+            useEffect(() => {
+                try {
+                    const savedConfig = localStorage.getItem('optimizer_config');
+                    if (savedConfig) {
+                        const parsed = JSON.parse(savedConfig);
+                        setConfig({ ...DEFAULT_CONFIG, ...parsed });
+                    }
+                } catch (error) {
+                    console.error('加载配置失败:', error);
+                }
+            }, []);
+
+            const saveConfig = (newConfig) => {
+                setConfig(newConfig);
+                try {
+                    localStorage.setItem('optimizer_config', JSON.stringify(newConfig));
+                } catch (error) {
+                    console.error('保存配置失败:', error);
+                    alert('配置保存失败,请检查浏览器设置');
+                }
+            };
+
+            const addCustomModel = () => {
+                if (!newModelId.trim() || !newModelName.trim()) {
+                    alert('请输入模型ID和名称');
+                    return;
+                }
+
+                const customModels = config.customModels || [];
+                if (customModels.some(m => m.id === newModelId)) {
+                    alert('该模型ID已存在');
+                    return;
+                }
+
+                const updatedModels = [...customModels, { id: newModelId, name: newModelName }];
+                saveConfig({ ...config, customModels: updatedModels });
+                setNewModelId('');
+                setNewModelName('');
+                alert('模型添加成功!');
+            };
+
+            const removeCustomModel = (modelId) => {
+                const customModels = config.customModels || [];
+                const updatedModels = customModels.filter(m => m.id !== modelId);
+                saveConfig({ ...config, customModels: updatedModels });
+            };
+
+            const allModels = [...SILICON_MODELS, ...(config.customModels || [])];
+
+            const getParagraphColor = (para) => {
+                if (mode === 'notes') {
+                    // 笔记模式下的颜色逻辑
+                    const hasNoteA = para.conservative && para.conservative.trim();
+                    const hasNoteB = para.aggressive && para.aggressive.trim();
+
+                    if (hasNoteA && hasNoteB) {
+                        return 'bg-red-500'; // 混合笔记 - 红色
+                    } else if (hasNoteA) {
+                        return 'bg-blue-500'; // 笔记A - 蓝色
+                    } else if (hasNoteB) {
+                        return 'bg-purple-500'; // 笔记B - 紫色
+                    }
+                }
+
+                if (!para.selected) return 'bg-gray-300';
+                if (para.selected === 'conservative') return 'bg-blue-500';
+                if (para.selected === 'aggressive') return 'bg-purple-500';
+                return 'bg-gray-300';
+            };
+
+            const getParagraphBorder = (para) => {
+                if (para.isOriginalModified) {
+                    return 'ring-2 ring-inset ring-black';
+                }
+                return '';
+            };
+
+            const hasMultipleNoteTypes = () => {
+                if (mode !== 'notes') return false;
+                const hasConservative = paragraphs.some(p => p.selected === 'conservative');
+                const hasAggressive = paragraphs.some(p => p.selected === 'aggressive');
+                return hasConservative && hasAggressive;
+            };
+
+            const scrollToParagraph = (index) => {
+                const element = paragraphRefs.current[index];
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const fileType = file.name.split('.').pop().toLowerCase();
+                    let text = '';
+
+                    if (fileType === 'txt' || fileType === 'md') {
+                        text = await file.text();
+                    } else if (fileType === 'docx') {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer });
+                        text = result.value;
+                    } else {
+                        alert('不支持的文件格式!请上传 .txt、.md 或 .docx 文件');
+                        return;
+                    }
+
+                    setOriginalText(text);
+                } catch (error) {
+                    alert('文件读取失败: ' + error.message);
+                }
+            };
+
+            const parseText = (text) => {
+                const separatorSetting = config.separator;
+                let sections;
+
+                if (!separatorSetting || separatorSetting === '' || separatorSetting === '\n\n') {
+                    sections = text.split('\n\n');
+                } else {
+                    const tempSections = text.split(separatorSetting);
+                    sections = tempSections.slice(0, -1).map(section => section + separatorSetting);
+                    const lastSection = tempSections[tempSections.length - 1];
+                    if (lastSection && lastSection.trim()) {
+                        sections.push(lastSection);
+                    }
+                }
+
+                return sections.filter(s => s.trim()).map((section, index) => ({
+                    id: index,
+                    original: section,
+                    originalBackup: section,
+                    conservative: '',
+                    aggressive: '',
+                    selected: null,
+                    loading: false,
+                    label: '',
+                    isOriginalModified: false
+                }));
+            };
+
+            const handleTextImport = () => {
+                if (!originalText.trim()) return;
+                const parsed = parseText(originalText);
+                setParagraphs(parsed);
+                setShowQuickSettings(false);
+            };
+
+            const handleIntelligentCutting = () => {
+                if (!originalText.trim()) return;
+
+                const charCount = segmentCharCount > 0 ? segmentCharCount : 1500;
+                const chunks = [];
+                let currentIndex = 0;
+
+                while (currentIndex < originalText.length) {
+                    let endIndex = currentIndex + charCount;
+                    if (endIndex >= originalText.length) {
+                        endIndex = originalText.length;
+                    } else {
+                        const lastPeriodIndex = originalText.lastIndexOf('。', endIndex);
+                        if (lastPeriodIndex > currentIndex) {
+                            endIndex = lastPeriodIndex + 1;
+                        }
+                    }
+
+                    chunks.push(originalText.substring(currentIndex, endIndex));
+                    currentIndex = endIndex;
+                }
+
+                const sections = chunks.filter(s => s.trim()).map((section, index) => ({
+                    id: index,
+                    original: section,
+                    originalBackup: section,
+                    conservative: '',
+                    aggressive: '',
+                    selected: null,
+                    loading: false,
+                    label: '',
+                    isOriginalModified: false
+                }));
+
+                setParagraphs(sections);
+                setShowQuickSettings(false);
+
+                setTimeout(() => {
+                    setShowBatchModal(true);
+                }, 100);
+            };
+
+            const startAiSegmentation = async () => {
+                setShowBatchModal(false);
+                setProcessing(true);
+
+                const promises = paragraphs.map(p => callAPI(p.original, config.aiSegmentPrompt));
+
+                try {
+                    const results = await Promise.allSettled(promises);
+
+                    const newParagraphs = results.flatMap((result, i) => {
+                        if (result.status === 'fulfilled' && result.value.trim()) {
+                            const textBlock = result.value;
+                            const segments = textBlock.split('\n\n').filter(s => s.trim());
+                            if (segments.length > 0) {
+                                return segments.map(segment => ({
+                                    original: segment,
+                                    originalBackup: segment,
+                                    conservative: '',
+                                    aggressive: '',
+                                    selected: null,
+                                    loading: false,
+                                    label: '',
+                                    isOriginalModified: false,
+                                }));
+                            }
+                        }
+
+                        if (result.status === 'rejected') {
+                            addNotification(`段落 ${i + 1} AI 分段失败: ${result.reason?.message || '未知错误'}`, 'error');
+                        }
+                        return [paragraphs[i]];
+                    });
+
+                    const finalParagraphs = newParagraphs.map((p, i) => ({ ...p, id: i }));
+                    setParagraphs(finalParagraphs);
+
+                } catch (error) {
+                    console.error('AI Segmentation process failed:', error);
+                    addNotification('AI 智能分段处理失败: ' + error.message, 'error');
+                } finally {
+                    setProcessing(false);
+                }
+            };
+
+            const callAPI = async (text, prompt) => {
+                if (config.provider === 'dify') {
+                    return await callDifyAPI(text, prompt);
+                } else {
+                    return await callSiliconAPI(text, prompt);
+                }
+            };
+
+            const callDifyAPI = async (text, systemPrompt) => {
+                const response = await fetch(config.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputs: { text },
+                        query: systemPrompt,
+                        response_mode: 'blocking',
+                        user: 'subtitle-optimizer'
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'API调用失败');
+                }
+
+                const data = await response.json();
+                if (data.answer) return data.answer;
+                if (data.data?.outputs?.text) return data.data.outputs.text;
+                if (data.result) return data.result;
+                throw new Error('无法解析响应');
+            };
+
+            const callSiliconAPI = async (text, systemPrompt) => {
+                const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.siliconApiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: config.siliconModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: text }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || 'API调用失败');
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            };
+
+            const optimizeAndSelect = async (index, modeType) => {
+                // 先选择这个版本
+                selectVersion(index, modeType);
+
+                // 如果还没有生成内容,则开始生成
+                const paragraph = paragraphs[index];
+                if (!paragraph[modeType] || paragraph[modeType].startsWith('❌')) {
+                    await optimizeParagraph(index, modeType);
+                }
+            };
+
+            const optimizeParagraph = async (index, modeType, useContext = false) => {
+                const paragraph = paragraphs[index];
+
+                setParagraphs(prev => prev.map((p, i) =>
+                    i === index ? { ...p, loading: true } : p
+                ));
+
+                let prompt;
+                if (useContext) {
+                    // 使用上下文批处理提示词
+                    if (mode === 'optimize') {
+                        prompt = modeType === 'conservative' ? config.contextConservativePrompt : config.contextAggressivePrompt;
+                    } else {
+                        prompt = modeType === 'conservative' ? config.contextNoteAPrompt : config.contextNoteBPrompt;
+                    }
+
+                    // 处理上下文
+                    let contextText = '';
+                    if (index > 0) {
+                        contextText = paragraphs[index - 1].original || '';
+                    }
+
+                    // 替换提示词中的 {上文} 占位符
+                    prompt = prompt.replace(/\{上文\}/g, contextText);
+                } else {
+                    // 使用普通提示词
+                    if (mode === 'optimize') {
+                        prompt = modeType === 'conservative' ? config.conservativePrompt : config.aggressivePrompt;
+                    } else {
+                        prompt = modeType === 'conservative' ? config.noteAPrompt : config.noteBPrompt;
+                    }
+                }
+
+                try {
+                    const optimizedText = await callAPI(paragraph.original, prompt);
+
+                    setParagraphs(prev => prev.map((p, i) =>
+                        i === index ? {
+                            ...p,
+                            [modeType]: optimizedText.trim(),
+                            loading: false
+                        } : p
+                    ));
+                } catch (error) {
+                    console.error('优化失败:', error);
+                    const errorMessage = `段落${index + 1} ${modeType === 'conservative' ? config.buttonNameA : config.buttonNameB}失败: ${error.message}`;
+                    addNotification(errorMessage, 'error');
+                    setParagraphs(prev => prev.map((p, i) =>
+                        i === index ? {
+                            ...p,
+                            [modeType]: '❌ 优化失败: ' + error.message,
+                            loading: false
+                        } : p
+                    ));
+                }
+            };
+
+            const optimizeAll = async (targetMode, useContext = false) => {
+                shouldPauseRef.current = false;
+                setIsPaused(false);
+                setProcessing(true);
+
+                const mode = targetMode || batchMode;
+                const startIndex = currentBatchIndex;
+                const concurrentCount = config.concurrentCount || 1;
+
+                for (let i = startIndex; i < paragraphs.length; i += concurrentCount) {
+                    if (shouldPauseRef.current) {
+                        setCurrentBatchIndex(i);
+                        setIsPaused(true);
+                        setProcessing(false);
+                        return;
+                    }
+
+                    // 获取当前批次要处理的段落索引
+                    const batchIndexes = [];
+                    for (let j = 0; j < concurrentCount && (i + j) < paragraphs.length; j++) {
+                        const index = i + j;
+                        // 跳过原文为空的段落
+                        if (paragraphs[index].original && paragraphs[index].original.trim()) {
+                            batchIndexes.push(index);
+                        }
+                    }
+
+                    // 并发处理当前批次
+                    if (batchIndexes.length > 0) {
+                        setCurrentBatchIndex(i);
+                        await Promise.all(
+                            batchIndexes.map(index => optimizeParagraph(index, mode, useContext))
+                        );
+                        // 批次之间的延迟
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                    }
+                }
+
+                setProcessing(false);
+                setCurrentBatchIndex(0);
+                setBatchMode(null);
+            };
+
+            const startBatchOptimize = (mode, useContext = false) => {
+                setBatchMode(mode);
+                setShowBatchModal(false);
+                setCurrentBatchIndex(0);
+                optimizeAll(mode, useContext);
+            };
+
+            const pauseBatchOptimize = () => {
+                shouldPauseRef.current = true;
+            };
+
+            const resumeBatchOptimize = () => {
+                optimizeAll();
+            };
+
+            const cancelBatchOptimize = () => {
+                shouldPauseRef.current = true;
+                setProcessing(false);
+                setIsPaused(false);
+                setCurrentBatchIndex(0);
+                setBatchMode(null);
+            };
+
+            const updateText = (index, field, value) => {
+                setParagraphs(prev => {
+                    const updated = prev.map((p, i) => {
+                        if (i === index) {
+                            const newPara = { ...p, [field]: value };
+                            // 检查是否修改了原文
+                            if (field === 'original') {
+                                newPara.isOriginalModified = value !== p.originalBackup;
+                            }
+                            return newPara;
+                        }
+                        return p;
+                    });
+
+                    if (field === 'original' && !value.trim()) {
+                        const filtered = updated.filter((_, i) => i !== index);
+                        return filtered.map((p, i) => ({ ...p, id: i }));
+                    }
+
+                    return updated;
+                });
+            };
+
+            const insertParagraph = (afterIndex) => {
+                setParagraphs(prev => {
+                    const newPara = {
+                        id: afterIndex + 1,
+                        original: '',
+                        originalBackup: '',
+                        conservative: '',
+                        aggressive: '',
+                        selected: null,
+                        loading: false,
+                        label: '',
+                        isOriginalModified: false
+                    };
+
+                    const updated = [
+                        ...prev.slice(0, afterIndex + 1),
+                        newPara,
+                        ...prev.slice(afterIndex + 1)
+                    ];
+
+                    return updated.map((p, i) => ({ ...p, id: i }));
+                });
+            };
+
+            const mergeParagraphs = (index) => {
+                if (index < 0 || index >= paragraphs.length - 1) return;
+
+                setParagraphs(prev => {
+                    const currentPara = prev[index];
+                    const nextPara = prev[index + 1];
+
+                    const mergedOriginal = currentPara.original + '\n\n' + nextPara.original;
+
+                    const updatedParagraphs = [...prev];
+                    updatedParagraphs[index] = {
+                        ...currentPara,
+                        original: mergedOriginal,
+                        originalBackup: mergedOriginal, // Also update backup
+                        conservative: '', // Clear notes
+                        aggressive: '', // Clear notes
+                        isOriginalModified: true, // Mark as modified
+                    };
+
+                    updatedParagraphs.splice(index + 1, 1); // Remove the next paragraph
+
+                    return updatedParagraphs.map((p, i) => ({ ...p, id: i }));
+                });
+            };
+
+            const getModifiedCount = () => {
+                if (mode === 'optimize') {
+                    // 优化模式:统计选择了优化版本的段落
+                    return paragraphs.filter(p => p.selected).length;
+                } else {
+                    // 笔记模式:统计有笔记内容或修改了原文的段落
+                    return paragraphs.filter(p =>
+                        (p.conservative && p.conservative.trim()) ||
+                        (p.aggressive && p.aggressive.trim()) ||
+                        p.isOriginalModified
+                    ).length;
+                }
+            };
+
+            const selectVersion = (index, version) => {
+                setParagraphs(prev => prev.map((p, i) =>
+                    i === index ? { ...p, selected: version } : p
+                ));
+            };
+
+            const exportText = () => {
+                let finalText;
+
+                if (mode === 'optimize') {
+                    finalText = paragraphs.map(p => {
+                        if (p.selected === 'conservative') return p.conservative;
+                        if (p.selected === 'aggressive') return p.aggressive;
+                        return p.original;
+                    }).join('\n\n');
+                } else {
+                    finalText = paragraphs.map(p => {
+                        let result = '';
+
+                        // 如果有标签,添加标签作为标题
+                        if (p.label && p.label.trim()) {
+                            result += config.labelPrefix + p.label.trim() + '\n';
+                        }
+
+                        result += p.original;
+
+                        // 检查是否有笔记A,且不是占位符文本
+                        if (p.conservative && p.conservative.trim()) {
+                            result += '\n\n' + config.notePrefix + '【' + config.noteButtonNameA + '】\n' + config.notePrefix + p.conservative;
+                        }
+
+                        // 检查是否有笔记B,且不是占位符文本
+                        if (p.aggressive && p.aggressive.trim()) {
+                            result += '\n\n' + config.notePrefix + '【' + config.noteButtonNameB + '】\n' + config.notePrefix + p.aggressive;
+                        }
+
+                        return result;
+                    }).join('\n\n');
+                }
+
+                const blob = new Blob([finalText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${mode === 'optimize' ? '优化文稿' : '笔记文稿'}_${new Date().toLocaleDateString()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+            const isConfigValid = config.provider === 'dify'
+                ? (config.apiKey && config.apiUrl)
+                : config.siliconApiKey;
+
+            return (
+                <div className={`min-h-screen p-4 md:p-6 transition-colors duration-500 ${
+                    config.darkMode
+                        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
+                        : mode === 'optimize'
+                            ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-100'
+                            : 'bg-gradient-to-br from-purple-50 via-violet-50 to-purple-100'
+                }`}>
+                    {/* 错误通知区域 */}
+                    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-md">
+                        {notifications.map((notification) => (
+                            <div
+                                key={notification.id}
+                                onClick={() => removeNotification(notification.id)}
+                                className={`p-4 rounded-lg shadow-lg cursor-pointer transform transition-all hover:scale-105 ${
+                                    notification.type === 'error'
+                                        ? 'bg-red-500 text-white'
+                                        : 'bg-blue-500 text-white'
+                                }`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="flex-1">
+                                        <div className="text-xs opacity-75 mb-1">{notification.timestamp}</div>
+                                        <div className="text-sm font-medium">{notification.message}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                                <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
+                                    <h2 className="text-2xl font-bold text-gray-800">设置</h2>
+                                    <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">批量处理设置</label>
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div>
+                                                        <div className="font-medium text-gray-800">并发处理数量</div>
+                                                        <div className="text-xs text-gray-500">同时处理的段落数量</div>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-indigo-600">{config.concurrentCount}</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="10"
+                                                    value={config.concurrentCount}
+                                                    onChange={(e) => saveConfig({ ...config, concurrentCount: parseInt(e.target.value) })}
+                                                    className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+                                                />
+                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                    <span>1个</span>
+                                                    <span>5个</span>
+                                                    <span>10个</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">⚠️ 并发数量越大速度越快,但可能增加API负担</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">外观设置</label>
+                                        <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium text-gray-800">深色模式</div>
+                                                    <div className="text-xs text-gray-500">切换到深色主题</div>
+                                                </div>
+                                                <button
+                                                    onClick={() => saveConfig({ ...config, darkMode: !config.darkMode })}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                                                        config.darkMode ? 'bg-indigo-600' : 'bg-gray-300'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                                                            config.darkMode ? 'translate-x-6' : 'translate-x-1'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div>
+                                                        <div className="font-medium text-gray-800">字体大小</div>
+                                                        <div className="text-xs text-gray-500">调整编辑区域字体大小</div>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-indigo-600">{config.fontSize}px</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="12"
+                                                    max="24"
+                                                    value={config.fontSize}
+                                                    onChange={(e) => saveConfig({ ...config, fontSize: parseInt(e.target.value) })}
+                                                    className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+                                                />
+                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                    <span>12px</span>
+                                                    <span>18px</span>
+                                                    <span>24px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">API 提供商</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => saveConfig({ ...config, provider: 'dify' })}
+                                                className={`p-4 rounded-lg border-2 transition ${
+                                                    config.provider === 'dify'
+                                                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="font-semibold">Dify</div>
+                                                <div className="text-xs text-gray-500 mt-1">本地/云端部署</div>
+                                            </button>
+                                            <button
+                                                onClick={() => saveConfig({ ...config, provider: 'silicon' })}
+                                                className={`p-4 rounded-lg border-2 transition ${
+                                                    config.provider === 'silicon'
+                                                        ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="font-semibold">硅基流动</div>
+                                                <div className="text-xs text-gray-500 mt-1">SiliconFlow</div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {config.provider === 'dify' && (
+                                        <div className="space-y-4 p-4 bg-indigo-50 rounded-lg">
+                                            <h3 className="font-semibold text-indigo-900">Dify 配置</h3>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                                                <input
+                                                    type="password"
+                                                    value={config.apiKey}
+                                                    onChange={(e) => saveConfig({ ...config, apiKey: e.target.value })}
+                                                    placeholder="app-xxxxxxxxxxxxxxxxxxxx"
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">API Endpoint</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.apiUrl}
+                                                    onChange={(e) => saveConfig({ ...config, apiUrl: e.target.value })}
+                                                    placeholder="https://api.dify.ai/v1/chat-messages"
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                                <div className="mt-2 px-3 py-2 bg-yellow-100 rounded text-sm text-black">
+                                                    💡 本地端部署dify的API Endpoint为http://127.0.0.1/v1/chat-messages
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {config.provider === 'silicon' && (
+                                        <div className="space-y-4 p-4 bg-purple-50 rounded-lg">
+                                            <h3 className="font-semibold text-purple-900">硅基流动配置</h3>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                                                <input
+                                                    type="password"
+                                                    value={config.siliconApiKey}
+                                                    onChange={(e) => saveConfig({ ...config, siliconApiKey: e.target.value })}
+                                                    placeholder="sk-xxxxxxxxxxxxxxxxxxxx"
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">选择模型</label>
+                                                <select
+                                                    value={config.siliconModel}
+                                                    onChange={(e) => saveConfig({ ...config, siliconModel: e.target.value })}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                                >
+                                                    {allModels.map(model => (
+                                                        <option key={model.id} value={model.id}>{model.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="border-t pt-4">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">添加自定义模型</h4>
+                                                <div className="mb-3 px-3 py-2 bg-yellow-100 rounded text-sm text-black">
+                                                    💡 模型ID与模型名称,在硅基流动官网选择模型后即上方,模型logo右侧
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">模型ID</label>
+                                                        <input
+                                                            type="text"
+                                                            value={newModelId}
+                                                            onChange={(e) => setNewModelId(e.target.value)}
+                                                            placeholder="例如: Pro/Qwen/Qwen2.5-14B-Instruct"
+                                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-400 text-sm"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">模型名称</label>
+                                                        <input
+                                                            type="text"
+                                                            value={newModelName}
+                                                            onChange={(e) => setNewModelName(e.target.value)}
+                                                            placeholder="例如: Qwen2.5-14B-Pro"
+                                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-400 text-sm"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={addCustomModel}
+                                                        className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition"
+                                                    >
+                                                        添加模型
+                                                    </button>
+                                                </div>
+
+                                                {config.customModels && config.customModels.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <h5 className="text-xs font-semibold text-gray-600 mb-2">已添加的自定义模型</h5>
+                                                        <div className="space-y-2">
+                                                            {config.customModels.map(model => (
+                                                                <div key={model.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                                                                    <div className="text-sm">
+                                                                        <div className="font-medium text-gray-800">{model.name}</div>
+                                                                        <div className="text-xs text-gray-500">{model.id}</div>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => removeCustomModel(model.id)}
+                                                                        className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
+                                                                    >
+                                                                        删除
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">段落分隔符</label>
+                                        <input
+                                            type="text"
+                                            value={config.separator}
+                                            onChange={(e) => saveConfig({ ...config, separator: e.target.value })}
+                                            placeholder="两个换行符"
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">默认: 两个换行符表示段落分隔</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">保守优化提示词</label>
+                                        <textarea
+                                            value={config.conservativePrompt}
+                                            onChange={(e) => saveConfig({ ...config, conservativePrompt: e.target.value })}
+                                            rows={4}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">激进优化提示词</label>
+                                        <textarea
+                                            value={config.aggressivePrompt}
+                                            onChange={(e) => saveConfig({ ...config, aggressivePrompt: e.target.value })}
+                                            rows={4}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">笔记A提示词</label>
+                                        <textarea
+                                            value={config.noteAPrompt}
+                                            onChange={(e) => saveConfig({ ...config, noteAPrompt: e.target.value })}
+                                            rows={4}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">笔记B提示词</label>
+                                        <textarea
+                                            value={config.noteBPrompt}
+                                            onChange={(e) => saveConfig({ ...config, noteBPrompt: e.target.value })}
+                                            rows={4}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">AI智能分段提示词</label>
+                                        <textarea
+                                            value={config.aiSegmentPrompt}
+                                            onChange={(e) => saveConfig({ ...config, aiSegmentPrompt: e.target.value })}
+                                            rows={4}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div className="border-t pt-6">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">上下文批处理提示词</label>
+                                        <p className="text-xs text-gray-500 mb-4">
+                                            💡 这些提示词用于"上下文批处理"功能。使用 <code className="bg-gray-100 px-1 rounded">{'\{上文\}'}</code> 占位符来引用上一段内容
+                                        </p>
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">上下文保守优化提示词</label>
+                                                <textarea
+                                                    value={config.contextConservativePrompt}
+                                                    onChange={(e) => saveConfig({ ...config, contextConservativePrompt: e.target.value })}
+                                                    rows={4}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">上下文激进优化提示词</label>
+                                                <textarea
+                                                    value={config.contextAggressivePrompt}
+                                                    onChange={(e) => saveConfig({ ...config, contextAggressivePrompt: e.target.value })}
+                                                    rows={4}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">上下文笔记A提示词</label>
+                                                <textarea
+                                                    value={config.contextNoteAPrompt}
+                                                    onChange={(e) => saveConfig({ ...config, contextNoteAPrompt: e.target.value })}
+                                                    rows={4}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">上下文笔记B提示词</label>
+                                                <textarea
+                                                    value={config.contextNoteBPrompt}
+                                                    onChange={(e) => saveConfig({ ...config, contextNoteBPrompt: e.target.value })}
+                                                    rows={4}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">笔记导出格式</label>
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">段落标签前缀</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.labelPrefix}
+                                                    onChange={(e) => saveConfig({ ...config, labelPrefix: e.target.value })}
+                                                    placeholder="例如: ## "
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">添加在段落标签前,例如: {config.labelPrefix}我的标签</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">笔记内容前缀</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.notePrefix}
+                                                    onChange={(e) => saveConfig({ ...config, notePrefix: e.target.value })}
+                                                    placeholder="例如: > "
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">添加在笔记标题和内容前,例如: {config.notePrefix}【笔记A】</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            saveConfig(DEFAULT_CONFIG);
+                                            alert('已恢复默认设置');
+                                        }}
+                                        className="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium"
+                                    >
+                                        恢复默认设置
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {editingButtonNames && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-bold text-gray-800">
+                                        {mode === 'optimize' ? '编辑优化按钮名称' : '编辑笔记名称'}
+                                    </h3>
+                                    <button onClick={() => setEditingButtonNames(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    {mode === 'optimize' ? (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">保守优化按钮名称</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.buttonNameA}
+                                                    onChange={(e) => saveConfig({ ...config, buttonNameA: e.target.value })}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">激进优化按钮名称</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.buttonNameB}
+                                                    onChange={(e) => saveConfig({ ...config, buttonNameB: e.target.value })}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">笔记A名称</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.noteButtonNameA}
+                                                    onChange={(e) => saveConfig({ ...config, noteButtonNameA: e.target.value })}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">用于按钮名称、段落标题和导出标题(如:【{config.noteButtonNameA}】)</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">笔记B名称</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.noteButtonNameB}
+                                                    onChange={(e) => saveConfig({ ...config, noteButtonNameB: e.target.value })}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">用于按钮名称、段落标题和导出标题(如:【{config.noteButtonNameB}】)</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    <button
+                                        onClick={() => setEditingButtonNames(false)}
+                                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+                                    >
+                                        保存
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showBatchModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-bold text-gray-800">选择批量优化模式</h3>
+                                    <button onClick={() => setShowBatchModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <span>并发处理数量:</span>
+                                        <span className="font-semibold text-indigo-600">{config.concurrentCount} 个/批次</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-3 mb-6">
+                                    <p className="text-sm text-gray-600">请选择批量优化类型:</p>
+
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase">普通批量处理</p>
+                                        <button
+                                            onClick={() => startBatchOptimize('conservative', false)}
+                                            className="w-full p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-between"
+                                        >
+                                            <span>{mode === 'optimize' ? config.buttonNameA : config.noteButtonNameA}</span>
+                                            <span className="text-sm opacity-90">{paragraphs.length} 段</span>
+                                        </button>
+                                        <button
+                                            onClick={() => startBatchOptimize('aggressive', false)}
+                                            className="w-full p-4 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-between"
+                                        >
+                                            <span>{mode === 'optimize' ? config.buttonNameB : config.noteButtonNameB}</span>
+                                            <span className="text-sm opacity-90">{paragraphs.length} 段</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="border-t pt-3 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase">AI智能分段</p>
+                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">新功能</span>
+                                        </div>
+                                        <button
+                                            onClick={startAiSegmentation}
+                                            className="w-full p-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-between"
+                                        >
+                                            <span>执行AI智能分段</span>
+                                            <span className="text-sm opacity-90">{paragraphs.length} 段</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="border-t pt-3 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase">上下文批处理</p>
+                                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">含上文</span>
+                                        </div>
+                                        <button
+                                            onClick={() => startBatchOptimize('conservative', true)}
+                                            className="w-full p-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-between"
+                                        >
+                                            <span>{mode === 'optimize' ? config.buttonNameA : config.noteButtonNameA}</span>
+                                            <span className="text-sm opacity-90">{paragraphs.length} 段</span>
+                                        </button>
+                                        <button
+                                            onClick={() => startBatchOptimize('aggressive', true)}
+                                            className="w-full p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-between"
+                                        >
+                                            <span>{mode === 'optimize' ? config.buttonNameB : config.noteButtonNameB}</span>
+                                            <span className="text-sm opacity-90">{paragraphs.length} 段</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowBatchModal(false)}
+                                    className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium"
+                                >
+                                    取消
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="max-w-7xl mx-auto">
+                        <div className={`rounded-2xl shadow-xl p-6 md:p-8 mb-6 ${
+                            config.darkMode ? 'bg-gray-800' : 'bg-white'
+                        }`}>
+                            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
+                                        <FileText className="w-8 h-8 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className={`text-2xl md:text-3xl font-bold ${config.darkMode ? 'text-white' : 'text-gray-800'}`}>字幕文稿智能优化工具</h1>
+                                        <p className={`text-sm ${config.darkMode ? 'text-gray-400' : 'text-gray-500'}`}>本地版</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowSettings(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition shadow-md"
+                                >
+                                    <Settings className="w-5 h-5" />
+                                    设置
+                                </button>
+                            </div>
+
+                            <div className="mb-6 grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => {
+                                        setMode('optimize');
+                                        setParagraphs([]);
+                                        setOriginalText('');
+                                        setShowQuickSettings(true);
+                                    }}
+                                    disabled={mode !== 'optimize' && (originalText.trim() || paragraphs.length > 0)}
+                                    className={`relative p-6 rounded-xl text-white font-bold text-lg transition-all ${
+                                        mode === 'optimize'
+                                            ? 'mode-button-optimize shadow-lg scale-105'
+                                            : (originalText.trim() || paragraphs.length > 0)
+                                                ? 'bg-gray-300 cursor-not-allowed opacity-60'
+                                                : 'bg-gray-300 hover:bg-gray-400'
+                                    }`}
+                                >
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-2xl mb-1">📝</div>
+                                                <div>文稿智能优化</div>
+                                                {mode === 'optimize' && <div className="text-xs mt-1 opacity-90">替换原文</div>}
+                                            </div>
+                                            {mode === 'optimize' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingButtonNames(true);
+                                                    }}
+                                                    className="ml-2 p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+                                                    title="编辑按钮名称"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setMode('notes');
+                                        setParagraphs([]);
+                                        setOriginalText('');
+                                        setShowQuickSettings(true);
+                                    }}
+                                    disabled={mode !== 'notes' && (originalText.trim() || paragraphs.length > 0)}
+                                    className={`relative p-6 rounded-xl text-white font-bold text-lg transition-all ${
+                                        mode === 'notes'
+                                            ? 'mode-button-notes shadow-lg scale-105'
+                                            : (originalText.trim() || paragraphs.length > 0)
+                                                ? 'bg-gray-300 cursor-not-allowed opacity-60'
+                                                : 'bg-gray-300 hover:bg-gray-400'
+                                    }`}
+                                >
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-2xl mb-1">📚</div>
+                                                <div>文稿智能笔记</div>
+                                                {mode === 'notes' && <div className="text-xs mt-1 opacity-90">添加笔记</div>}
+                                            </div>
+                                            {mode === 'notes' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingButtonNames(true);
+                                                    }}
+                                                    className="ml-2 p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition"
+                                                    title="编辑笔记名称"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {(originalText.trim() || paragraphs.length > 0) && (
+                                <div className="mb-6 px-4 py-3 bg-amber-50 border-l-4 border-amber-400 rounded text-sm text-amber-800">
+                                    ⚠️ 当前有文稿内容,切换模式会清空数据。请先完成当前工作或导出后再切换。
+                                </div>
+                            )}
+
+                            {showQuickSettings && (
+                                <div className={`mb-6 p-6 rounded-xl border-2 ${
+                                    config.darkMode
+                                        ? 'bg-gray-800 border-indigo-700'
+                                        : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-indigo-200'
+                                }`}>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                            config.provider === 'dify'
+                                                ? config.darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
+                                                : config.darkMode ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-700'
+                                        }`}>
+                                            {config.provider === 'dify' ? 'Dify' : '硅基流动'}
+                                        </div>
+                                        {isConfigValid && <div className={`text-sm ${config.darkMode ? 'text-green-400' : 'text-green-600'}`}>已配置</div>}
+                                    </div>
+                                    {!isConfigValid && (
+                                        <div className={`flex items-start gap-2 text-sm p-3 rounded-lg ${
+                                            config.darkMode
+                                                ? 'text-amber-300 bg-amber-900 bg-opacity-50'
+                                                : 'text-amber-700 bg-amber-50'
+                                        }`}>
+                                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                            <p>请先在设置中配置 API 密钥</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        导入文稿
+                                    </label>
+                                    <div className="flex gap-3 mb-3">
+                                        <label className="flex-1 cursor-pointer">
+                                            <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition shadow-md">
+                                                <Upload className="w-5 h-5" />
+                                                上传文件 (txt/docx/md)
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept=".txt,.docx,.md"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    </div>
+                                    <textarea
+                                        value={originalText}
+                                        onChange={(e) => setOriginalText(e.target.value)}
+                                        placeholder="或直接粘贴文本..."
+                                        rows={8}
+                                        className={`w-full px-4 py-3 border-2 rounded-lg font-mono resize-none ${
+                                            config.darkMode
+                                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                        }`}
+                                        style={{ fontSize: `${config.fontSize}px` }}
+                                    />
+                                </div>
+                                <div className="flex gap-3 flex-wrap">
+                                    <button
+                                        onClick={handleTextImport}
+                                        disabled={!originalText.trim() || !isConfigValid}
+                                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition font-medium shadow-md"
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                        解析文本
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleIntelligentCutting}
+                                            disabled={!originalText.trim() || !isConfigValid}
+                                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition font-medium shadow-md"
+                                        >
+                                            智能分段
+                                        </button>
+                                        <input
+                                            type="number"
+                                            value={segmentCharCount}
+                                            onChange={(e) => setSegmentCharCount(parseInt(e.target.value))}
+                                            className="w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    {paragraphs.length > 0 && (
+                                        <>
+                                            {!processing && !isPaused && (
+                                                <>
+                                                    <button
+                                                        onClick={() => setShowBatchModal(true)}
+                                                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition font-medium shadow-md"
+                                                    >
+                                                        <Sparkles className="w-5 h-5" />
+                                                        批量优化 ({paragraphs.length}段)
+                                                    </button>
+
+                                                </>
+                                            )}
+                                            {processing && (
+                                                <button
+                                                    onClick={pauseBatchOptimize}
+                                                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition font-medium shadow-md"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    暂停 ({currentBatchIndex + 1}/{paragraphs.length})
+                                                </button>
+                                            )}
+                                            {isPaused && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={resumeBatchOptimize}
+                                                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition font-medium shadow-md"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        继续 ({currentBatchIndex}/{paragraphs.length})
+                                                    </button>
+                                                    <button
+                                                        onClick={cancelBatchOptimize}
+                                                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition font-medium shadow-md"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                        取消
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {paragraphs.length > 0 && (
+                            <div className="space-y-6">
+                                <div
+                                    className="fixed z-40 right-0"
+                                    style={{
+                                        top: '50%',
+                                        transform: 'translateY(-50%)'
+                                    }}
+                                >
+                                    {!showProgressPanel ? (
+                                        <div
+                                            className="bg-white rounded-l-full shadow-lg p-3 cursor-pointer hover:scale-110 active:scale-95 transition-transform select-none"
+                                            onClick={() => setShowProgressPanel(true)}
+                                        >
+                                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-l-xl shadow-2xl p-4 w-64 max-h-96 overflow-y-auto">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                                    <span>已处理段落</span>
+                                                    {hasMultipleNoteTypes() && (
+                                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">混合</span>
+                                                    )}
+                                                </h3>
+                                                <button
+                                                    onClick={() => setShowProgressPanel(false)}
+                                                    className="p-1 hover:bg-gray-100 rounded transition"
+                                                >
+                                                    <X className="w-4 h-4 text-gray-600" />
+                                                </button>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="grid grid-cols-6 gap-2">
+                                                    {paragraphs.map((para, index) => (
+                                                        <div
+                                                            key={para.id}
+                                                            onClick={() => scrollToParagraph(index)}
+                                                            className={`aspect-square rounded ${getParagraphColor(para)} ${getParagraphBorder(para)} flex items-center justify-center text-white text-xs font-bold shadow hover:scale-110 transition cursor-pointer`}
+                                                            title={`第${index + 1}段: ${para.selected ? (para.selected === 'conservative' ? (mode === 'optimize' ? config.buttonNameA : config.noteButtonNameA) : (mode === 'optimize' ? config.buttonNameB : config.noteButtonNameB)) : '未选择'}${para.isOriginalModified ? ' (已修改原文)' : ''} - 点击跳转`}
+                                                        >
+                                                            {index + 1}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="pt-3 border-t text-xs text-gray-600 space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                                                        <span>未处理</span>
+                                                    </div>
+                                                    {mode === 'optimize' ? (
+                                                        <>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                                                                <span>{config.buttonNameA}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                                                                <span>{config.buttonNameB}</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                                                                <span>仅{config.noteButtonNameA}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                                                                <span>仅{config.noteButtonNameB}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-red-500 rounded"></div>
+                                                                <span>混合笔记</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-4 h-4 bg-gray-300 rounded ring-2 ring-inset ring-black"></div>
+                                                        <span>已修改原文</span>
+                                                    </div>
+                                                </div>
+                                                <div className="pt-2 text-xs text-gray-500">
+                                                    已修改: {getModifiedCount()} / {paragraphs.length}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {paragraphs.map((para, index) => (
+                                    <React.Fragment key={para.id}>
+                                        <div className="flex justify-start items-center gap-4 my-4">
+                                            <button
+                                                onClick={() => insertParagraph(index === 0 ? -1 : index - 1)}
+                                                className="w-10 h-10 bg-gray-300 hover:bg-gray-400 rounded-full flex items-center justify-center transition shadow-md group"
+                                                title="在此处插入新段落"
+                                            >
+                                                <svg className="w-6 h-6 text-gray-600 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </button>
+
+                                            {index > 0 && (
+                                                <button
+                                                    onClick={() => mergeParagraphs(index - 1)}
+                                                    className="w-10 h-10 bg-gray-300 hover:bg-gray-400 rounded-full flex items-center justify-center transition shadow-md group"
+                                                    title="与上一段落合并"
+                                                >
+                                                    <svg className="w-6 h-6 text-gray-600 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div
+                                            ref={el => paragraphRefs.current[index] = el}
+                                            className={`rounded-xl shadow-lg hover:shadow-xl transition flex ${
+                                                config.darkMode ? 'bg-gray-800' : 'bg-white'
+                                            }`}
+                                        >
+                                            {/* 左侧段落编号 - 更窄的固定宽度 */}
+                                            <div className={`w-10 flex items-center justify-center rounded-l-xl flex-shrink-0 ${
+                                                config.darkMode ? 'bg-gray-700' : 'bg-gray-100'
+                                            }`}>
+                                                <div style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}>
+                                                    <span className={`text-xs font-semibold tracking-wide ${config.darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                                        第{index + 1}段
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* 右侧内容区域 */}
+                                            <div className="flex-1 pl-1 pr-4 py-4 md:pr-6 md:py-6 min-w-0">
+                                                {mode === 'notes' && (
+                                                    <div className="mb-4">
+                                                        <input
+                                                            type="text"
+                                                            value={para.label || ''}
+                                                            onChange={(e) => updateText(index, 'label', e.target.value)}
+                                                            placeholder="添加标题或标签..."
+                                                            className={`w-full px-3 py-1 text-sm rounded-lg border ${
+                                                                config.darkMode
+                                                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                                                    : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                                            }`}
+                                                        />
+                                                    </div>
+                                                )}
+                                            {mode === 'optimize' ? (
+                                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <button
+                                                                onClick={() => selectVersion(index, null)}
+                                                                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm ${
+                                                                    para.selected === null
+                                                                        ? config.darkMode
+                                                                            ? 'bg-gray-600 text-white'
+                                                                            : 'bg-gray-400 text-white'
+                                                                        : config.darkMode
+                                                                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                                }`}
+                                                            >
+                                                                <span>原文</span>
+                                                                {para.selected === null && (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                        <textarea
+                                                            value={para.original}
+                                                            onChange={(e) => updateText(index, 'original', e.target.value)}
+                                                            className={`w-full p-3 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                config.darkMode
+                                                                    ? 'bg-gray-700 border-gray-600 text-white focus:ring-2 focus:ring-gray-500 focus:border-gray-500'
+                                                                    : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-400'
+                                                            }`}
+                                                            style={{ fontSize: `${config.fontSize}px` }}
+                                                            rows={6}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <button
+                                                                onClick={() => optimizeAndSelect(index, 'conservative')}
+                                                                disabled={para.loading || !para.original || !para.original.trim()}
+                                                                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm ${
+                                                                    para.selected === 'conservative'
+                                                                        ? config.darkMode
+                                                                            ? 'bg-blue-600 text-white'
+                                                                            : 'bg-blue-500 text-white'
+                                                                        : config.darkMode
+                                                                            ? 'bg-blue-900 text-blue-300 hover:bg-blue-800'
+                                                                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            >
+                                                                <span>{config.buttonNameA}</span>
+                                                                {para.selected === 'conservative' && (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                            {para.conservative && !para.conservative.startsWith('❌') && (
+                                                                <button
+                                                                    onClick={() => optimizeParagraph(index, 'conservative')}
+                                                                    disabled={para.loading || !para.original || !para.original.trim()}
+                                                                    className={`p-2 rounded-lg transition ${
+                                                                        config.darkMode
+                                                                            ? 'text-blue-400 hover:bg-blue-900'
+                                                                            : 'text-blue-600 hover:bg-blue-100'
+                                                                    } disabled:opacity-50`}
+                                                                    title="重新生成"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {para.loading && (!para.conservative || para.loading) ? (
+                                                            <div className={`p-4 rounded-lg border-2 min-h-32 flex items-center justify-center ${
+                                                                config.darkMode
+                                                                    ? 'bg-blue-900 border-blue-700'
+                                                                    : 'bg-blue-50 border-blue-200'
+                                                            }`}>
+                                                                <div className={`flex items-center gap-2 ${config.darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                                    处理中...
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <textarea
+                                                                value={para.conservative || ''}
+                                                                onChange={(e) => updateText(index, 'conservative', e.target.value)}
+                                                                placeholder={`点击上方"${config.buttonNameA}"生成`}
+                                                                className={`w-full p-3 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                    config.darkMode
+                                                                        ? 'bg-blue-900 border-blue-700 text-white placeholder-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                                                        : 'bg-blue-50 border-blue-200 text-gray-900 placeholder-blue-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400'
+                                                                }`}
+                                                                style={{ fontSize: `${config.fontSize}px` }}
+                                                                rows={6}
+                                                            />
+                                                        )}
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <button
+                                                                onClick={() => optimizeAndSelect(index, 'aggressive')}
+                                                                disabled={para.loading || !para.original || !para.original.trim()}
+                                                                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm ${
+                                                                    para.selected === 'aggressive'
+                                                                        ? config.darkMode
+                                                                            ? 'bg-purple-600 text-white'
+                                                                            : 'bg-purple-500 text-white'
+                                                                        : config.darkMode
+                                                                            ? 'bg-purple-900 text-purple-300 hover:bg-purple-800'
+                                                                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            >
+                                                                <span>{config.buttonNameB}</span>
+                                                                {para.selected === 'aggressive' && (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                            {para.aggressive && !para.aggressive.startsWith('❌') && (
+                                                                <button
+                                                                    onClick={() => optimizeParagraph(index, 'aggressive')}
+                                                                    disabled={para.loading || !para.original || !para.original.trim()}
+                                                                    className={`p-2 rounded-lg transition ${
+                                                                        config.darkMode
+                                                                            ? 'text-purple-400 hover:bg-purple-900'
+                                                                            : 'text-purple-600 hover:bg-purple-100'
+                                                                    } disabled:opacity-50`}
+                                                                    title="重新生成"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {para.loading && (!para.aggressive || para.loading) ? (
+                                                            <div className={`p-4 rounded-lg border-2 min-h-32 flex items-center justify-center ${
+                                                                config.darkMode
+                                                                    ? 'bg-purple-900 border-purple-700'
+                                                                    : 'bg-purple-50 border-purple-200'
+                                                            }`}>
+                                                                <div className={`flex items-center gap-2 ${config.darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                                                                    <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                                                    处理中...
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <textarea
+                                                                value={para.aggressive || ''}
+                                                                onChange={(e) => updateText(index, 'aggressive', e.target.value)}
+                                                                placeholder={`点击上方"${config.buttonNameB}"生成`}
+                                                                className={`w-full p-3 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                    config.darkMode
+                                                                        ? 'bg-purple-900 border-purple-700 text-white placeholder-purple-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+                                                                        : 'bg-purple-50 border-purple-200 text-gray-900 placeholder-purple-400 focus:ring-2 focus:ring-purple-400 focus:border-purple-400'
+                                                                }`}
+                                                                style={{ fontSize: `${config.fontSize}px` }}
+                                                                rows={6}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <h4 className={`text-sm font-medium flex items-center gap-2 ${config.darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            原文
+                                                        </h4>
+                                                        <textarea
+                                                            value={para.original}
+                                                            onChange={(e) => updateText(index, 'original', e.target.value)}
+                                                            className={`w-full p-4 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                config.darkMode
+                                                                    ? 'bg-gray-700 border-gray-600 text-white focus:ring-2 focus:ring-gray-500 focus:border-gray-500'
+                                                                    : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-400'
+                                                            }`}
+                                                            style={{ fontSize: `${config.fontSize}px` }}
+                                                            rows={4}
+                                                        />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <button
+                                                                    onClick={() => optimizeParagraph(index, 'conservative')}
+                                                                    disabled={para.loading || !para.original || !para.original.trim()}
+                                                                    className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm ${
+                                                                        para.conservative && para.conservative.trim() && !para.conservative.startsWith('❌')
+                                                                            ? config.darkMode
+                                                                                ? 'bg-blue-600 text-white'
+                                                                                : 'bg-blue-500 text-white'
+                                                                            : config.darkMode
+                                                                                ? 'bg-blue-900 text-blue-300 hover:bg-blue-800'
+                                                                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                                >
+                                                                    <span>{config.noteButtonNameA}</span>
+                                                                    {para.conservative && para.conservative.trim() && !para.conservative.startsWith('❌') && (
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    )}
+                                                                </button>
+                                                                {para.conservative && !para.conservative.startsWith('❌') && (
+                                                                    <button
+                                                                        onClick={() => optimizeParagraph(index, 'conservative')}
+                                                                        disabled={para.loading || !para.original || !para.original.trim()}
+                                                                        className={`p-2 rounded-lg transition ${
+                                                                            config.darkMode
+                                                                                ? 'text-blue-400 hover:bg-blue-900'
+                                                                                : 'text-blue-600 hover:bg-blue-100'
+                                                                        } disabled:opacity-50`}
+                                                                        title="重新生成"
+                                                                    >
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {para.loading && !para.conservative ? (
+                                                                <div className={`p-4 rounded-lg border-2 min-h-32 flex items-center justify-center ${
+                                                                    config.darkMode
+                                                                        ? 'bg-blue-900 border-blue-700'
+                                                                        : 'bg-blue-50 border-blue-200'
+                                                                }`}>
+                                                                    <div className={`flex items-center gap-2 ${config.darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                                        生成中...
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <textarea
+                                                                    value={para.conservative || ''}
+                                                                    onChange={(e) => updateText(index, 'conservative', e.target.value)}
+                                                                    placeholder={`点击上方"${config.noteButtonNameA}"生成或直接编辑`}
+                                                                    className={`w-full p-4 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                        config.darkMode
+                                                                            ? 'bg-blue-900 border-blue-700 text-white placeholder-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                                                            : 'bg-blue-50 border-blue-200 text-gray-900 placeholder-blue-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400'
+                                                                    }`}
+                                                                    style={{ fontSize: `${config.fontSize}px` }}
+                                                                    rows={6}
+                                                                />
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <button
+                                                                    onClick={() => optimizeParagraph(index, 'aggressive')}
+                                                                    disabled={para.loading || !para.original || !para.original.trim()}
+                                                                    className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm ${
+                                                                        para.aggressive && para.aggressive.trim() && !para.aggressive.startsWith('❌')
+                                                                            ? config.darkMode
+                                                                                ? 'bg-purple-600 text-white'
+                                                                                : 'bg-purple-500 text-white'
+                                                                            : config.darkMode
+                                                                                ? 'bg-purple-900 text-purple-300 hover:bg-purple-800'
+                                                                                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                                >
+                                                                    <span>{config.noteButtonNameB}</span>
+                                                                    {para.aggressive && para.aggressive.trim() && !para.aggressive.startsWith('❌') && (
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    )}
+                                                                </button>
+                                                                {para.aggressive && !para.aggressive.startsWith('❌') && (
+                                                                    <button
+                                                                        onClick={() => optimizeParagraph(index, 'aggressive')}
+                                                                        disabled={para.loading || !para.original || !para.original.trim()}
+                                                                        className={`p-2 rounded-lg transition ${
+                                                                            config.darkMode
+                                                                                ? 'text-purple-400 hover:bg-purple-900'
+                                                                                : 'text-purple-600 hover:bg-purple-100'
+                                                                        } disabled:opacity-50`}
+                                                                        title="重新生成"
+                                                                    >
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {para.loading && !para.aggressive ? (
+                                                                <div className={`p-4 rounded-lg border-2 min-h-32 flex items-center justify-center ${
+                                                                    config.darkMode
+                                                                        ? 'bg-purple-900 border-purple-700'
+                                                                        : 'bg-purple-50 border-purple-200'
+                                                                }`}>
+                                                                    <div className={`flex items-center gap-2 ${config.darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                                                                        <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                                                        生成中...
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <textarea
+                                                                    value={para.aggressive || ''}
+                                                                    onChange={(e) => updateText(index, 'aggressive', e.target.value)}
+                                                                    placeholder={`点击上方"${config.noteButtonNameB}"生成或直接编辑`}
+                                                                    className={`w-full p-4 rounded-lg border-2 leading-relaxed resize-none editable-text ${
+                                                                        config.darkMode
+                                                                            ? 'bg-purple-900 border-purple-700 text-white placeholder-purple-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+                                                                            : 'bg-purple-50 border-purple-200 text-gray-900 placeholder-purple-400 focus:ring-2 focus:ring-purple-400 focus:border-purple-400'
+                                                                    }`}
+                                                                    style={{ fontSize: `${config.fontSize}px` }}
+                                                                    rows={6}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                             </div>
+                                        </div>
+                                    </React.Fragment>
+                                ))}
+
+                                <div className="flex justify-start my-4">
+                                    <button
+                                        onClick={() => insertParagraph(paragraphs.length - 1)}
+                                        className="w-10 h-10 bg-gray-300 hover:bg-gray-400 rounded-full flex items-center justify-center transition shadow-md group"
+                                        title="在末尾插入新段落"
+                                    >
+                                        <svg className="w-6 h-6 text-gray-600 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-2xl p-6">
+                                    <button
+                                        onClick={exportText}
+                                        className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white text-indigo-700 rounded-lg hover:bg-gray-50 transition font-semibold text-lg shadow-lg"
+                                    >
+                                        <Save className="w-6 h-6" />
+                                        导出文本
+                                    </button>
+                                    {mode === 'optimize' && (
+                                        <div className="flex items-center justify-center mt-4 text-white text-sm">
+                                            <p>
+                                                已修改 <span className="font-bold text-lg">{getModifiedCount()}</span> / {paragraphs.length} 个段落
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<SubtitleOptimizer />, document.getElementById('root'));
+    </script>
+</body>
+</html>
